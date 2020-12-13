@@ -1,3 +1,5 @@
+package proxy;
+
 import java.io.IOException;
 
 public class Main {

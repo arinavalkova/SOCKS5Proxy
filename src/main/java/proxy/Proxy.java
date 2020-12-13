@@ -1,3 +1,5 @@
+package proxy;
+
 import org.xbill.DNS.ResolverConfig;
 import select.handlers.*;
 
@@ -24,12 +26,7 @@ public class Proxy {
         ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
         serverSocketChannel.bind(new InetSocketAddress(port));
         serverSocketChannel.configureBlocking(false);
-        serverSocketChannel.register(selector,
-                SelectionKey.OP_ACCEPT |
-                        SelectionKey.OP_CONNECT |
-                        SelectionKey.OP_READ |
-                        SelectionKey.OP_WRITE
-        );
+        serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
 
         DatagramChannel dnsChannel = DatagramChannel.open();
         dnsChannel.configureBlocking(false);
@@ -49,28 +46,32 @@ public class Proxy {
                 }
 
                 if (currentKey.isReadable() && currentKey == dnsKey) {
-                    new DNSHandler().start(currentKey);
+                    new DNSHandler(this).start(currentKey);
                     continue;
                 }
 
                 if (currentKey.isAcceptable()) {
-                    new AcceptHandler().start(currentKey);
+                    new AcceptHandler(this).start(currentKey);
                 }
 
                 if (currentKey.isConnectable()) {
-                    new ConnectHandler().start(currentKey);
+                    new ConnectHandler(this).start(currentKey);
                 }
 
                 if (currentKey.isReadable()) {
-                    new ReadHandler().start(currentKey);
+                    new ReadHandler(this).start(currentKey);
                 }
 
                 if (currentKey.isWritable()) {
-                    new WriteHandler().start(currentKey);
+                    new WriteHandler(this).start(currentKey);
                 }
 
                 keyIterator.remove();
             }
         }
+    }
+
+    public Selector getSelector() {
+        return selector;
     }
 }
