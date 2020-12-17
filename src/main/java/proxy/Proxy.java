@@ -4,6 +4,7 @@ import org.xbill.DNS.ResolverConfig;
 import select.functional.HeaderParser;
 import select.functional.KeyCloser;
 import select.functional.ResponseSender;
+import select.functional.SocketChannelCreator;
 import select.handlers.*;
 
 import java.io.IOException;
@@ -12,6 +13,7 @@ import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
+import java.util.HashMap;
 import java.util.Iterator;
 
 public class Proxy {
@@ -23,6 +25,10 @@ public class Proxy {
     private final KeyCloser keyCloser;
     private final HeaderParser headerParser;
     private final ResponseSender responseSender;
+    private final SocketChannelCreator socketChannelCreator;
+
+    private DatagramChannel dnsChannel;
+    private HashMap<Integer, SelectionKey> dnsCollection;
 
     public Proxy(int port) throws IOException {
         this.port = port;
@@ -30,6 +36,8 @@ public class Proxy {
         this.keyCloser = new KeyCloser();
         this.headerParser = new HeaderParser(this);
         this.responseSender = new ResponseSender();
+        this.socketChannelCreator = new SocketChannelCreator(this);
+        this.dnsCollection = new HashMap<>();
     }
 
     public void start() throws IOException {
@@ -38,7 +46,7 @@ public class Proxy {
         serverSocketChannel.configureBlocking(false);
         serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
 
-        DatagramChannel dnsChannel = DatagramChannel.open();
+        dnsChannel = DatagramChannel.open();
         dnsChannel.configureBlocking(false);
         String DNSServer = ResolverConfig.getCurrentConfig().server();
         dnsChannel.connect(new InetSocketAddress(DNSServer, DNS_PORT));
@@ -95,5 +103,17 @@ public class Proxy {
 
     public ResponseSender getResponseSender() {
         return responseSender;
+    }
+
+    public SocketChannelCreator getSocketChannelCreator() {
+        return socketChannelCreator;
+    }
+
+    public DatagramChannel getDnsChannel() {
+        return dnsChannel;
+    }
+
+    public HashMap<Integer, SelectionKey> getDnsCollection() {
+        return dnsCollection;
     }
 }

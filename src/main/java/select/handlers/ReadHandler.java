@@ -21,7 +21,7 @@ public class ReadHandler implements SelectHandler {
             keyStorage = new KeyStorage(currentKey);
         }
         if (channel.read(keyStorage.getInBuffer()) < 1) {
-            proxy.getKeyCloser().close(keyStorage.getKey());
+            proxy.getKeyCloser().close(keyStorage);
         } else if (keyStorage.getNeighbourStorage() == null) {
             proxy.getHeaderParser().parse(keyStorage);
         } else {
