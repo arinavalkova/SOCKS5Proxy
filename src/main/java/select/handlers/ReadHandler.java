@@ -25,11 +25,13 @@ public class ReadHandler implements SelectHandler {
         } else if (keyStorage.getNeighbourStorage() == null) {
             proxy.getHeaderParser().parse(keyStorage);
         } else {
-//            if (!((Attachment) key.attachment()).getPeer().isValid())
-//                return;
-//            attachment.peer.interestOps(attachment.peer.interestOps() | SelectionKey.OP_WRITE);
-//            key.interestOps(key.interestOps() ^ SelectionKey.OP_READ);
-//            attachment.in.flip();
+            if (!keyStorage.getNeighbourStorage().getKey().isValid())
+                return;
+            keyStorage.getNeighbourStorage().setInterestOps(
+                    keyStorage.getNeighbourStorage().getKey().interestOps()
+                            | SelectionKey.OP_WRITE);
+            keyStorage.setInterestOps(keyStorage.getKey().interestOps() ^ SelectionKey.OP_READ);
+            keyStorage.getInBuffer().flip();
         }
     }
 }

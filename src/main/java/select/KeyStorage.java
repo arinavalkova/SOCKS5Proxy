@@ -13,6 +13,9 @@ public class KeyStorage {
     private KeyStorage neighbourStorage;
     private boolean connectionEstablished;
 
+    private int port;
+    private InetAddress address;
+
     public KeyStorage(SelectionKey currentKey) {
         this.in = ByteBuffer.allocate(BUFF_SIZE);
         this.out = ByteBuffer.allocate(BUFF_SIZE);
@@ -52,5 +55,23 @@ public class KeyStorage {
         this.neighbourStorage = keyStorage;
     }
 
+    public void setOut(ByteBuffer out) {
+        this.out = out;
+    }
 
+    public void setAddress(InetAddress address) {
+        this.address = address;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public InetAddress getAddress() {
+        return address;
+    }
 }

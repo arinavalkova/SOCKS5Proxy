@@ -59,12 +59,14 @@ public class HeaderParser {
             int port = ((0xFF & in[keyStorage.getInBuffer().position() - 2]) << 8)
                     +
                     (0xFF & in[keyStorage.getInBuffer().position() - 1]);
+            keyStorage.setPort(port);
             if (in[3] == IPV4) {
                 try {
                     InetAddress address = InetAddress.getByAddress(
                             new byte[] { in[4], in[5], in[6], in[7] }
                             );
-                    proxy.getSocketChannelCreator().create(keyStorage, address, port);
+                    keyStorage.setAddress(address);
+                    proxy.getSocketChannelCreator().create(keyStorage);
                     System.out.println("Gotten destination address " + address.getHostName() + ":" + port);
                 } catch (Exception e) {
                    keyStorage.getOutBuffer().put(

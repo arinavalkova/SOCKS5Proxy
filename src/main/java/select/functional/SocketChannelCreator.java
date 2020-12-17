@@ -16,11 +16,11 @@ public class SocketChannelCreator {
         this.proxy = proxy;
     }
 
-    public void create(KeyStorage keyStorage, InetAddress address, int port) {
+    public void create(KeyStorage keyStorage) {
         try {
             SocketChannel neighbourChannel = SocketChannel.open();
             neighbourChannel.configureBlocking(false);
-            neighbourChannel.connect(new InetSocketAddress(address, port));
+            neighbourChannel.connect(new InetSocketAddress(keyStorage.getAddress(), keyStorage.getPort()));
             SelectionKey neighbourKey = neighbourChannel.register(
                     keyStorage.getKey().selector(),
                     SelectionKey.OP_CONNECT
