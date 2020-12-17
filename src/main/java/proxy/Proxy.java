@@ -1,6 +1,9 @@
 package proxy;
 
 import org.xbill.DNS.ResolverConfig;
+import select.functional.HeaderParser;
+import select.functional.KeyCloser;
+import select.functional.ResponseSender;
 import select.handlers.*;
 
 import java.io.IOException;
@@ -17,9 +20,16 @@ public class Proxy {
     private final int port;
     private final Selector selector;
 
+    private final KeyCloser keyCloser;
+    private final HeaderParser headerParser;
+    private final ResponseSender responseSender;
+
     public Proxy(int port) throws IOException {
         this.port = port;
         this.selector = Selector.open();
+        this.keyCloser = new KeyCloser();
+        this.headerParser = new HeaderParser(this);
+        this.responseSender = new ResponseSender();
     }
 
     public void start() throws IOException {
@@ -40,8 +50,8 @@ public class Proxy {
             while (keyIterator.hasNext()) {
                 SelectionKey currentKey = keyIterator.next();
 
+                keyIterator.remove();
                 if (!currentKey.isValid()) {
-                    keyIterator.remove();
                     continue;
                 }
 
@@ -52,10 +62,12 @@ public class Proxy {
 
                 if (currentKey.isAcceptable()) {
                     new AcceptHandler(this).start(currentKey);
+                    continue;
                 }
 
                 if (currentKey.isConnectable()) {
                     new ConnectHandler(this).start(currentKey);
+                    continue;
                 }
 
                 if (currentKey.isReadable()) {
@@ -65,13 +77,23 @@ public class Proxy {
                 if (currentKey.isWritable()) {
                     new WriteHandler(this).start(currentKey);
                 }
-
-                keyIterator.remove();
             }
         }
     }
 
     public Selector getSelector() {
         return selector;
+    }
+
+    public KeyCloser getKeyCloser() {
+        return keyCloser;
+    }
+
+    public HeaderParser getHeaderParser() {
+        return headerParser;
+    }
+
+    public ResponseSender getResponseSender() {
+        return responseSender;
     }
 }

@@ -9,6 +9,7 @@ import java.nio.channels.SocketChannel;
 
 public class AcceptHandler implements SelectHandler{
     private final Proxy proxy;
+
     public AcceptHandler(Proxy proxy) {
         this.proxy = proxy;
     }
