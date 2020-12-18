@@ -1,38 +1,38 @@
 package select.functional;
 
+import proxy.KeyStorage;
 import proxy.Proxy;
-import select.KeyStorage;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
 public class SocketChannelCreator {
+
     private final Proxy proxy;
 
     public SocketChannelCreator(Proxy proxy) {
         this.proxy = proxy;
     }
 
-    public void create(KeyStorage keyStorage) {
+    public void create(SelectionKey key) throws IOException {
         try {
-            SocketChannel neighbourChannel = SocketChannel.open();
-            neighbourChannel.configureBlocking(false);
-            neighbourChannel.connect(new InetSocketAddress(keyStorage.getAddress(), keyStorage.getPort()));
-            SelectionKey neighbourKey = neighbourChannel.register(
-                    keyStorage.getKey().selector(),
-                    SelectionKey.OP_CONNECT
-            );
-            if (!keyStorage.getKey().isValid())
+            KeyStorage attachment = (KeyStorage) key.attachment();
+            SocketChannel peer = SocketChannel.open();
+            peer.configureBlocking(false);
+            peer.connect(new InetSocketAddress(attachment.getAddress(), attachment.getPort()));
+            SelectionKey peerKey = peer.register(key.selector(), SelectionKey.OP_CONNECT);
+            if (!key.isValid())
                 return;
-            keyStorage.setInterestOps(0);
-            KeyStorage neighbourStorage = new KeyStorage(neighbourKey);
-            neighbourStorage.setNeighbourStorage(keyStorage);
-            keyStorage.setNeighbourStorage(neighbourStorage);
+            key.interestOps(0);
+            attachment.setNeighbourKey(peerKey);
+            KeyStorage peerAttachment = new KeyStorage(peerKey);
+            peerAttachment.setNeighbourKey(key);
+            peerKey.attach(peerAttachment);
         } catch (IOException e) {
-            proxy.getKeyCloser().close(keyStorage);
+            System.out.println("could not create peer");
+            proxy.getKeyCloser().close(key);
         }
     }
 }

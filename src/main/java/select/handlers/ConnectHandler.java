@@ -1,34 +1,29 @@
 package select.handlers;
 
+import proxy.KeyStorage;
 import proxy.Proxy;
-import select.KeyStorage;
 
+import java.io.IOException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
-public class ConnectHandler implements SelectHandler {
+public class ConnectHandler implements Handler {
     private static final byte REQUEST_GRANTED = 0x00;
 
-    private final Proxy proxy;
-
-    public ConnectHandler(Proxy proxy) {
-        this.proxy = proxy;
-    }
-
     @Override
-    public void start(SelectionKey currentKey) {
-        SocketChannel socketChannel = (SocketChannel) currentKey.channel();
-        KeyStorage keyStorage = (KeyStorage) currentKey.attachment();
+    public void handle(SelectionKey key, Proxy proxy) throws IOException {
+        SocketChannel socketChannel = (SocketChannel) key.channel();
+        KeyStorage attachment = (KeyStorage) key.attachment();
         try {
             socketChannel.finishConnect();
-            keyStorage.getInBuffer().put(
-                    proxy.getResponseSender().createResponse(currentKey, REQUEST_GRANTED)
-            ).flip();
-            keyStorage.setOut(keyStorage.getNeighbourStorage().getInBuffer());
-            keyStorage.getNeighbourStorage().setOut(keyStorage.getInBuffer());
-            keyStorage.getNeighbourStorage().setInterestOps(SelectionKey.OP_WRITE | SelectionKey.OP_READ);
+            attachment.getInBuffer().put(proxy.getResponseCreator().createServerResponse(key, REQUEST_GRANTED)).flip();
+            attachment.setOut(((KeyStorage) attachment.getNeighbourKey().attachment()).getInBuffer());
+            ((KeyStorage) attachment.getNeighbourKey().attachment()).setOut(attachment.getInBuffer());
+            attachment.getNeighbourKey().interestOps(SelectionKey.OP_WRITE | SelectionKey.OP_READ);
         } catch (Exception e) {
-            proxy.getKeyCloser().close(keyStorage);
+            System.out.println("connection refused");
+            proxy.getKeyCloser().close(key);
         }
     }
+
 }

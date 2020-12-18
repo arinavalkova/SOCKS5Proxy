@@ -7,24 +7,17 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 
-public class AcceptHandler implements SelectHandler{
-    private final Proxy proxy;
-
-    public AcceptHandler(Proxy proxy) {
-        this.proxy = proxy;
-    }
-
+public class AcceptHandler implements Handler {
     @Override
-    public void start(SelectionKey currentKey) {
-        SocketChannel acceptConnectionSocketChannel;
+    public void handle(SelectionKey key, Proxy proxy) {
         try {
-            acceptConnectionSocketChannel = ((ServerSocketChannel) currentKey.channel()).accept();
-            acceptConnectionSocketChannel.configureBlocking(false);
-            acceptConnectionSocketChannel.register(proxy.getSelector(), SelectionKey.OP_READ);
+            SocketChannel clientSocketChannel = ((ServerSocketChannel) key.channel()).accept();
+            clientSocketChannel.configureBlocking(false);
+            System.out.println("accept connection from " + clientSocketChannel.getRemoteAddress());
 
-            System.out.println("ACCEPT " + acceptConnectionSocketChannel.getRemoteAddress());
+            clientSocketChannel.register(proxy.getSelector(), SelectionKey.OP_READ);
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println(e.getMessage());
         }
     }
 }

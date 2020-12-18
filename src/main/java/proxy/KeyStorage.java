@@ -1,25 +1,25 @@
-package select;
+package proxy;
 
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
-import java.util.Map;
 
 public class KeyStorage {
     private final static int BUFF_SIZE = 4096;
     private ByteBuffer in;
     private ByteBuffer out;
-    private SelectionKey selectionKey;
-    private KeyStorage neighbourStorage;
+    private final SelectionKey selectionKey;
+    private SelectionKey neighbourKey;
     private boolean connectionEstablished;
 
     private int port;
     private InetAddress address;
 
     public KeyStorage(SelectionKey currentKey) {
+        this.selectionKey = currentKey;
+        this.selectionKey.attach(this);
         this.in = ByteBuffer.allocate(BUFF_SIZE);
         this.out = ByteBuffer.allocate(BUFF_SIZE);
-        this.selectionKey.attach(this);
         this.connectionEstablished = false;
     }
 
@@ -27,8 +27,8 @@ public class KeyStorage {
         return in;
     }
 
-    public KeyStorage getNeighbourStorage() {
-        return neighbourStorage;
+    public SelectionKey getNeighbourKey() {
+        return neighbourKey;
     }
 
     public SelectionKey getKey() {
@@ -51,8 +51,8 @@ public class KeyStorage {
         selectionKey.interestOps(opWrite);
     }
 
-    public void setNeighbourStorage(KeyStorage keyStorage) {
-        this.neighbourStorage = keyStorage;
+    public void setNeighbourKey(SelectionKey key) {
+        this.neighbourKey = key;
     }
 
     public void setOut(ByteBuffer out) {

@@ -1,9 +1,10 @@
 package proxy;
 
 import org.xbill.DNS.ResolverConfig;
+import select.SelectHandlers;
 import select.functional.HeaderParser;
 import select.functional.KeyCloser;
-import select.functional.ResponseSender;
+import select.functional.ResponseCreator;
 import select.functional.SocketChannelCreator;
 import select.handlers.*;
 
@@ -15,105 +16,114 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 
 public class Proxy {
-    private final static int DNS_PORT = 53;
+    private static final int DNSPORT = 53;
 
-    private final int port;
     private final Selector selector;
+    private final InetSocketAddress localSocket;
 
     private final KeyCloser keyCloser;
-    private final HeaderParser headerParser;
-    private final ResponseSender responseSender;
     private final SocketChannelCreator socketChannelCreator;
+    private final ResponseCreator responseCreator;
+    private final HeaderParser headerParser;
 
-    private DatagramChannel dnsChannel;
-    private HashMap<Integer, SelectionKey> dnsCollection;
+
+    DatagramChannel DNSChannel;
+    HashMap<Integer, SelectionKey> DNSMap = new HashMap<>();
+    String DNSServer = ResolverConfig.getCurrentConfig().server(); //getting address of recursive resolver
+    SelectionKey DNSKey;
+
 
     public Proxy(int port) throws IOException {
-        this.port = port;
         this.selector = Selector.open();
+        this.localSocket = new InetSocketAddress(port);
         this.keyCloser = new KeyCloser();
-        this.headerParser = new HeaderParser(this);
-        this.responseSender = new ResponseSender();
         this.socketChannelCreator = new SocketChannelCreator(this);
-        this.dnsCollection = new HashMap<>();
+        this.responseCreator = new ResponseCreator();
+        this.headerParser = new HeaderParser(this);
     }
 
     public void start() throws IOException {
         ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
-        serverSocketChannel.bind(new InetSocketAddress(port));
+        serverSocketChannel.bind(localSocket);
         serverSocketChannel.configureBlocking(false);
         serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
 
-        dnsChannel = DatagramChannel.open();
-        dnsChannel.configureBlocking(false);
-        String DNSServer = ResolverConfig.getCurrentConfig().server();
-        dnsChannel.connect(new InetSocketAddress(DNSServer, DNS_PORT));
-        SelectionKey dnsKey = dnsChannel.register(selector, SelectionKey.OP_READ);
+        DNSChannel = DatagramChannel.open();
+        DNSChannel.configureBlocking(false);
+        DNSChannel.connect(new InetSocketAddress(DNSServer, DNSPORT));
+        DNSKey = DNSChannel.register(selector, SelectionKey.OP_READ);
 
-        while (true) {
+        while (!Thread.interrupted()) {
             selector.select();
-            Iterator<SelectionKey> keyIterator = selector.selectedKeys().iterator();
-            while (keyIterator.hasNext()) {
-                SelectionKey currentKey = keyIterator.next();
-
-                keyIterator.remove();
-                if (!currentKey.isValid()) {
-                    continue;
-                }
-
-                if (currentKey.isReadable() && currentKey == dnsKey) {
-                    new DNSHandler(this).start(currentKey);
-                    continue;
-                }
-
-                if (currentKey.isAcceptable()) {
-                    new AcceptHandler(this).start(currentKey);
-                    continue;
-                }
-
-                if (currentKey.isConnectable()) {
-                    new ConnectHandler(this).start(currentKey);
-                    continue;
-                }
-
-                if (currentKey.isReadable()) {
-                    new ReadHandler(this).start(currentKey);
-                }
-
-                if (currentKey.isWritable()) {
-                    new WriteHandler(this).start(currentKey);
-                }
+            Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
+            while (iterator.hasNext()) {
+                SelectionKey key = iterator.next();
+                iterator.remove();
+                SelectHandlers handlerName = getHandlerName(key);
+                if (handlerName == null) continue;
+                selectHandlersMap.get(handlerName).handle(key, this);
             }
         }
     }
 
+    public SelectHandlers getHandlerName(SelectionKey key) {
+        return !key.isValid() ?
+                null
+                :
+                key.isWritable() ?
+                        SelectHandlers.WRITE
+                        :
+                        key.isConnectable() ?
+                                SelectHandlers.CONNECT
+                                :
+                                key.isAcceptable() ?
+                                        SelectHandlers.ACCEPT
+                                        :
+                                        key.isReadable() && key == DNSKey ?
+                                                SelectHandlers.DNS
+                                                :
+                                                key.isReadable() ?
+                                                        SelectHandlers.READ
+                                                        :
+                                                        null;
+    }
+
+    private static final Map<SelectHandlers, Handler> selectHandlersMap = Map.of(
+            SelectHandlers.ACCEPT, new AcceptHandler(),
+            SelectHandlers.CONNECT, new ConnectHandler(),
+            SelectHandlers.DNS, new DNSHandler(),
+            SelectHandlers.READ, new ReadHandler(),
+            SelectHandlers.WRITE, new WriteHandler()
+    );
+
     public Selector getSelector() {
         return selector;
+    }
+
+    public DatagramChannel getDNSChannel() {
+        return DNSChannel;
+    }
+
+    public HashMap<Integer, SelectionKey> getDNSMap() {
+        return DNSMap;
     }
 
     public KeyCloser getKeyCloser() {
         return keyCloser;
     }
 
-    public HeaderParser getHeaderParser() {
-        return headerParser;
-    }
-
-    public ResponseSender getResponseSender() {
-        return responseSender;
-    }
-
     public SocketChannelCreator getSocketChannelCreator() {
         return socketChannelCreator;
     }
 
-    public DatagramChannel getDnsChannel() {
-        return dnsChannel;
+    public ResponseCreator getResponseCreator() {
+        return responseCreator;
     }
 
-    public HashMap<Integer, SelectionKey> getDnsCollection() {
-        return dnsCollection;
+    public HeaderParser getHeaderParser() {
+        return headerParser;
     }
 }

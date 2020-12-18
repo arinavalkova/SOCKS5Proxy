@@ -1,25 +1,21 @@
 package select.functional;
 
-import select.KeyStorage;
+import proxy.KeyStorage;
 
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
 
 public class KeyCloser {
-    public void close(KeyStorage keyStorage) {
-        try {
-            keyStorage.getKey().cancel();
-            keyStorage.getKey().channel().close();
-            if (!keyStorage.getKey().isValid())
-                return;
-            if (keyStorage.getNeighbourStorage() != null) {
-                SelectionKey neighbourKey = keyStorage.getNeighbourStorage().getKey();
-                keyStorage.setNeighbourStorage(null);
-                neighbourKey.cancel();
-                neighbourKey.channel().close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+    public void close(SelectionKey key) throws IOException {
+        key.cancel();
+        key.channel().close();
+        if (!key.isValid())
+            return;
+        if (((KeyStorage) key.attachment()).getNeighbourKey() != null) {
+            SelectionKey peerKey = ((KeyStorage) key.attachment()).getNeighbourKey();
+            ((KeyStorage) key.attachment()).setNeighbourKey(null);
+            peerKey.cancel();
+            peerKey.channel().close();
         }
     }
 }

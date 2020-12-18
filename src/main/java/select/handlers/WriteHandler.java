@@ -1,37 +1,30 @@
 package select.handlers;
 
+import proxy.KeyStorage;
 import proxy.Proxy;
-import select.KeyStorage;
 
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
-public class WriteHandler implements SelectHandler {
-    private final Proxy proxy;
-    public WriteHandler(Proxy proxy) {
-        this.proxy = proxy;
-    }
-
+public class WriteHandler implements Handler {
     @Override
-    public void start(SelectionKey currentKey) {
-        KeyStorage keyStorage = (KeyStorage) currentKey.attachment();
-        SocketChannel socketChannel = (SocketChannel) currentKey.channel();
+    public void handle(SelectionKey key, Proxy proxy) throws IOException {
+        KeyStorage attachment = (KeyStorage) key.attachment();
+        SocketChannel socketChannel = (SocketChannel) key.channel();
         try {
-            int a;
-            if ((a = socketChannel.write(keyStorage.getOutBuffer())) == -1) {
-                proxy.getKeyCloser().close(keyStorage);
-            }
-            else if (keyStorage.getOutBuffer().remaining() == 0) {
-                keyStorage.getOutBuffer().clear();
-                keyStorage.setInterestOps(SelectionKey.OP_READ);
-                if (a > 0 && keyStorage.getNeighbourStorage() != null)
-                    keyStorage.getNeighbourStorage().setInterestOps(
-                            keyStorage.getNeighbourStorage().getKey().interestOps() | SelectionKey.OP_READ
-                    );
+            int a = 0;
+            if ((a = socketChannel.write(attachment.getOutBuffer())) == -1) {
+                proxy.getKeyCloser().close(key);
+            } else if (attachment.getOutBuffer().remaining() == 0) {
+                attachment.getOutBuffer().clear();
+                key.interestOps(SelectionKey.OP_READ);
+                if (a > 0 && attachment.getNeighbourKey() != null)
+                    attachment.getNeighbourKey().interestOps(attachment.getNeighbourKey().interestOps() | SelectionKey.OP_READ);
             }
         } catch (IOException e) {
-            proxy.getKeyCloser().close(keyStorage);
+            System.out.println("connection refused");
+            proxy.getKeyCloser().close(key);
         }
     }
 }
