@@ -12,12 +12,12 @@ import java.nio.channels.SelectionKey;
 public class HeaderParser {
     private final static byte SOCKS_VERSION = 0x05;
     private final static byte COMMAND_NOT_SUPPORTED = 0x07;
-    private final static byte[] NO_AUTHENTICATION = new byte[]{ 0x05, 0x00 };
     private final static byte ESTABLISH_STREAM_CONNECTION = 0x01;
     private final static byte IPV4 = 0x01;
     private final static byte DOMAIN_NAME = 0x03;
     private final static byte GENERAL_FAILURE = 0x01;
     private final static byte NO_AUTHENTICATION_METHODS_SUPPORTED = 0x00;
+    private final static byte NO_AUTHENTICATION = 0x00;
     private final static String DOT = ".";
 
     private final Proxy proxy;
@@ -39,7 +39,9 @@ public class HeaderParser {
             }
             for (int i = 0; i < in[1]; i++) {
                 if (in[i + 2] == 0) {
-                    keyStorage.getOutBuffer().put(NO_AUTHENTICATION).flip();
+                    keyStorage.getOutBuffer().put(
+                            new byte[] { SOCKS_VERSION, NO_AUTHENTICATION }
+                            ).flip();
                     keyStorage.getInBuffer().clear();
                     key.interestOps(SelectionKey.OP_WRITE);
                     keyStorage.setConnectionEstablished(true);
