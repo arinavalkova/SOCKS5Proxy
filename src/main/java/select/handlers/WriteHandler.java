@@ -10,20 +10,24 @@ import java.nio.channels.SocketChannel;
 public class WriteHandler implements Handler {
     @Override
     public void handle(SelectionKey key, Proxy proxy) throws IOException {
-        KeyStorage attachment = (KeyStorage) key.attachment();
-        SocketChannel socketChannel = (SocketChannel) key.channel();
         try {
-            int a = 0;
-            if ((a = socketChannel.write(attachment.getOutBuffer())) == -1) {
+            KeyStorage keyStorage = (KeyStorage) key.attachment();
+            SocketChannel socketChannel = (SocketChannel) key.channel();
+            int ret;
+            if ((ret = socketChannel.write(keyStorage.getOutBuffer())) == -1) {
                 proxy.getKeyCloser().close(key);
-            } else if (attachment.getOutBuffer().remaining() == 0) {
-                attachment.getOutBuffer().clear();
+            } else if (keyStorage.getOutBuffer().remaining() == 0) {
+                keyStorage.getOutBuffer().clear();
                 key.interestOps(SelectionKey.OP_READ);
-                if (a > 0 && attachment.getNeighbourKey() != null)
-                    attachment.getNeighbourKey().interestOps(attachment.getNeighbourKey().interestOps() | SelectionKey.OP_READ);
+                if (ret > 0 && keyStorage.getNeighbourKey() != null)
+                    keyStorage
+                            .getNeighbourKey()
+                            .interestOps(keyStorage
+                                    .getNeighbourKey()
+                                    .interestOps() | SelectionKey.OP_READ
+                            );
             }
         } catch (IOException e) {
-            System.out.println("connection refused");
             proxy.getKeyCloser().close(key);
         }
     }

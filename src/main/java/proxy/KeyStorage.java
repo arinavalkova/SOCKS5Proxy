@@ -6,7 +6,8 @@ import java.nio.channels.SelectionKey;
 
 public class KeyStorage {
     private final static int BUFF_SIZE = 4096;
-    private ByteBuffer in;
+
+    private final ByteBuffer in;
     private ByteBuffer out;
     private final SelectionKey selectionKey;
     private SelectionKey neighbourKey;
@@ -45,10 +46,6 @@ public class KeyStorage {
 
     public ByteBuffer getOutBuffer() {
         return out;
-    }
-
-    public void setInterestOps(int opWrite) {
-        selectionKey.interestOps(opWrite);
     }
 
     public void setNeighbourKey(SelectionKey key) {

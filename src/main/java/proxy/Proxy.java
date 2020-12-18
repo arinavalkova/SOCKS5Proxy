@@ -19,22 +19,20 @@ import java.util.Iterator;
 import java.util.Map;
 
 public class Proxy {
-    private static final int DNSPORT = 53;
+    private static final int DNS_PORT = 53;
 
     private final Selector selector;
     private final InetSocketAddress localSocket;
+
+    private final HashMap<Integer, SelectionKey> dnsCollection;
+    private final String dnsServer;
+    private DatagramChannel dnsChannel;
+    private SelectionKey dnsKey;
 
     private final KeyCloser keyCloser;
     private final SocketChannelCreator socketChannelCreator;
     private final ResponseCreator responseCreator;
     private final HeaderParser headerParser;
-
-
-    DatagramChannel DNSChannel;
-    HashMap<Integer, SelectionKey> DNSMap = new HashMap<>();
-    String DNSServer = ResolverConfig.getCurrentConfig().server(); //getting address of recursive resolver
-    SelectionKey DNSKey;
-
 
     public Proxy(int port) throws IOException {
         this.selector = Selector.open();
@@ -43,6 +41,8 @@ public class Proxy {
         this.socketChannelCreator = new SocketChannelCreator(this);
         this.responseCreator = new ResponseCreator();
         this.headerParser = new HeaderParser(this);
+        this.dnsCollection = new HashMap<>();
+        this.dnsServer = ResolverConfig.getCurrentConfig().server();
     }
 
     public void start() throws IOException {
@@ -51,12 +51,12 @@ public class Proxy {
         serverSocketChannel.configureBlocking(false);
         serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
 
-        DNSChannel = DatagramChannel.open();
-        DNSChannel.configureBlocking(false);
-        DNSChannel.connect(new InetSocketAddress(DNSServer, DNSPORT));
-        DNSKey = DNSChannel.register(selector, SelectionKey.OP_READ);
+        dnsChannel = DatagramChannel.open();
+        dnsChannel.configureBlocking(false);
+        dnsChannel.connect(new InetSocketAddress(dnsServer, DNS_PORT));
+        dnsKey = dnsChannel.register(selector, SelectionKey.OP_READ);
 
-        while (!Thread.interrupted()) {
+        while (true) {
             selector.select();
             Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
             while (iterator.hasNext()) {
@@ -82,7 +82,7 @@ public class Proxy {
                                 key.isAcceptable() ?
                                         SelectHandlers.ACCEPT
                                         :
-                                        key.isReadable() && key == DNSKey ?
+                                        key.isReadable() && key == dnsKey ?
                                                 SelectHandlers.DNS
                                                 :
                                                 key.isReadable() ?
@@ -103,12 +103,12 @@ public class Proxy {
         return selector;
     }
 
-    public DatagramChannel getDNSChannel() {
-        return DNSChannel;
+    public DatagramChannel getDnsChannel() {
+        return dnsChannel;
     }
 
-    public HashMap<Integer, SelectionKey> getDNSMap() {
-        return DNSMap;
+    public HashMap<Integer, SelectionKey> getDnsCollection() {
+        return dnsCollection;
     }
 
     public KeyCloser getKeyCloser() {

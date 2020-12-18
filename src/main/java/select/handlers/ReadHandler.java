@@ -13,25 +13,29 @@ public class ReadHandler implements Handler {
         if (key.attachment() == null) {
             key.attach(new KeyStorage(key));
         }
-        KeyStorage attachment = (KeyStorage) key.attachment();
-        SocketChannel socketChannel = (SocketChannel) key.channel();
         try {
-            int a = 0;
-            if ((a = socketChannel.read(attachment.getInBuffer())) < 0) {
+            KeyStorage keyStorage = (KeyStorage) key.attachment();
+            SocketChannel socketChannel = (SocketChannel) key.channel();
+            int ret;
+            if ((ret = socketChannel.read(keyStorage.getInBuffer())) < 0) {
                 proxy.getKeyCloser().close(key);
-            } else if (a > 0) {
-                if (attachment.getNeighbourKey() == null)
+            } else if (ret > 0) {
+                if (keyStorage.getNeighbourKey() == null)
                     proxy.getHeaderParser().parse(key);
                 else {
                     if (!((KeyStorage) key.attachment()).getNeighbourKey().isValid())
                         return;
-                    attachment.getNeighbourKey().interestOps(attachment.getNeighbourKey().interestOps() | SelectionKey.OP_WRITE);
+                    keyStorage
+                            .getNeighbourKey()
+                            .interestOps(keyStorage
+                                    .getNeighbourKey()
+                                    .interestOps() | SelectionKey.OP_WRITE
+                            );
                     key.interestOps(key.interestOps() ^ SelectionKey.OP_READ);
-                    attachment.getInBuffer().flip();
+                    keyStorage.getInBuffer().flip();
                 }
             }
         } catch (IOException e) {
-            System.out.println("connection refused");
             proxy.getKeyCloser().close(key);
         }
     }

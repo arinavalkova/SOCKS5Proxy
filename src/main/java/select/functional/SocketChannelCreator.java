@@ -18,20 +18,21 @@ public class SocketChannelCreator {
 
     public void create(SelectionKey key) throws IOException {
         try {
-            KeyStorage attachment = (KeyStorage) key.attachment();
-            SocketChannel peer = SocketChannel.open();
-            peer.configureBlocking(false);
-            peer.connect(new InetSocketAddress(attachment.getAddress(), attachment.getPort()));
-            SelectionKey peerKey = peer.register(key.selector(), SelectionKey.OP_CONNECT);
+            KeyStorage keyStorage = (KeyStorage) key.attachment();
+
+            SocketChannel neighbour = SocketChannel.open();
+            neighbour.configureBlocking(false);
+            neighbour.connect(new InetSocketAddress(keyStorage.getAddress(), keyStorage.getPort()));
+
+            SelectionKey neighbourKey = neighbour.register(key.selector(), SelectionKey.OP_CONNECT);
             if (!key.isValid())
                 return;
             key.interestOps(0);
-            attachment.setNeighbourKey(peerKey);
-            KeyStorage peerAttachment = new KeyStorage(peerKey);
-            peerAttachment.setNeighbourKey(key);
-            peerKey.attach(peerAttachment);
+            keyStorage.setNeighbourKey(neighbourKey);
+            KeyStorage neighbourStorage = new KeyStorage(neighbourKey);
+            neighbourStorage.setNeighbourKey(key);
+            neighbourKey.attach(neighbourStorage);
         } catch (IOException e) {
-            System.out.println("could not create peer");
             proxy.getKeyCloser().close(key);
         }
     }

@@ -13,7 +13,7 @@ public class AcceptHandler implements Handler {
         try {
             SocketChannel clientSocketChannel = ((ServerSocketChannel) key.channel()).accept();
             clientSocketChannel.configureBlocking(false);
-            System.out.println("accept connection from " + clientSocketChannel.getRemoteAddress());
+            System.out.println("ACCEPT " + clientSocketChannel.getRemoteAddress());
 
             clientSocketChannel.register(proxy.getSelector(), SelectionKey.OP_READ);
         } catch (IOException e) {
